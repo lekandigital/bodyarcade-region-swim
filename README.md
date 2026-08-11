@@ -1,9 +1,11 @@
 # BodyArcade Region Swim
 
 A focused public demo of the BodyArcade Shared World region swim experience.
-The Shared World app is the repository root and deploys at:
+The Shared World app is the repository root. The region swim view is the
+default at `/`, and the original explicit route also works:
 
 ```text
+/
 /shared-world/?view=region&hud=0
 ```
 

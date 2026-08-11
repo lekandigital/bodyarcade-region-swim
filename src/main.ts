@@ -2,7 +2,7 @@
  * BodyArcade Shared World — boot (Checkpoint 01).
  *
  * Views:
- *  - `pool` (the new default): the GAMICO dolphin swims in the unmodified
+ *  - `pool`: the GAMICO dolphin swims in the unmodified
  *    vendored demo pool mounted at K = 7.5 m/demo-unit, driven by the
  *    ported 120 Hz sim + keyboard/body swim controls.
  *  - `stock`: the pristine vendored jeantimex/threejs-water demo, mounted
@@ -21,12 +21,13 @@
  */
 
 const params = new URLSearchParams(location.search);
-const view = params.get('view') ?? 'pool';
+const view = params.get('view') ?? 'region';
 
 async function mountStock() {
   await import('../vendor/threejs-water/src/styles.css');
   const { WaterApp } = await import('../vendor/threejs-water/src/app/WaterApp');
   void new WaterApp().init();
+  mountViewMenu();
 }
 
 async function mountPool() {
@@ -70,7 +71,7 @@ async function bootPoseRuntime() {
     election: 'strict',
     forceExternal: params.get('pp') === 'companion',
   });
-  if (params.get('hud') !== '0') {
+  if ((params.get('hud') ?? '0') !== '0') {
     const { mountPoseHud } = await import('@bodyarcade/pose-hud');
     const hud = mountPoseHud(runtime, { safeArea: { x: 12, y: 64 }, title: 'SWIM' });
     (window as unknown as { __PP_HUD: typeof hud }).__PP_HUD = hud;
@@ -91,11 +92,82 @@ function mountPoolOverlay(id: string) {
     '<a href="?view=credits" style="color:#8fd4ff;pointer-events:auto">credits</a> — ' +
     'dolphin by GAMICO (CC-BY 4.0)';
   document.body.appendChild(el);
+  mountViewMenu();
+}
+
+function mountViewMenu() {
+  if (document.getElementById('view-menu-button')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'view-menu';
+  wrap.style.cssText =
+    'position:fixed;right:12px;top:12px;z-index:30;font:12px/1.4 ui-monospace,Menlo,monospace;';
+
+  const button = document.createElement('button');
+  button.id = 'view-menu-button';
+  button.type = 'button';
+  button.textContent = 'menu';
+  button.setAttribute('aria-expanded', 'false');
+  button.style.cssText =
+    'color:#e8f4fa;background:rgba(6,14,20,.72);border:1px solid rgba(142,212,255,.45);' +
+    'border-radius:6px;padding:7px 10px;cursor:pointer;text-transform:uppercase;letter-spacing:0;';
+
+  const panel = document.createElement('nav');
+  panel.id = 'view-menu-panel';
+  panel.setAttribute('aria-label', 'views');
+  panel.hidden = true;
+  panel.style.cssText =
+    'margin-top:6px;min-width:190px;background:rgba(6,14,20,.88);border:1px solid rgba(142,212,255,.35);' +
+    'border-radius:6px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.32);backdrop-filter:blur(8px);';
+
+  const links = [
+    ['Region swim', '?view=region&hud=0'],
+    ['Region + HUD', '?view=region'],
+    ['Region debug', '?view=region&debug=1'],
+    ['Pool', '?view=pool'],
+    ['Stock water', '?view=stock'],
+    ['Region preview', '?view=region-preview'],
+    ['Credits', '?view=credits'],
+  ];
+  for (const [label, href] of links) {
+    const a = document.createElement('a');
+    a.href = href;
+    a.textContent = label;
+    a.style.cssText =
+      'display:block;color:#e8f4fa;text-decoration:none;padding:7px 8px;border-radius:4px;';
+    a.addEventListener('mouseenter', () => {
+      a.style.background = 'rgba(142,212,255,.14)';
+    });
+    a.addEventListener('mouseleave', () => {
+      a.style.background = 'transparent';
+    });
+    panel.appendChild(a);
+  }
+
+  button.addEventListener('click', () => {
+    panel.hidden = !panel.hidden;
+    button.setAttribute('aria-expanded', String(!panel.hidden));
+  });
+  addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      panel.hidden = true;
+      button.setAttribute('aria-expanded', 'false');
+    }
+  });
+  document.addEventListener('click', (event) => {
+    if (!wrap.contains(event.target as Node)) {
+      panel.hidden = true;
+      button.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  wrap.append(button, panel);
+  document.body.appendChild(wrap);
 }
 
 async function mountRegionPreviewView() {
   document.getElementById('help')?.remove();
   document.getElementById('help-toggle')?.remove();
+  mountViewMenu();
   const { mountRegionPreview } = await import('./world/regionPreview');
   await mountRegionPreview(document.getElementById('app')!);
 }
@@ -105,6 +177,7 @@ async function mountCreditsView() {
   document.getElementById('help')?.remove();
   document.getElementById('help-toggle')?.remove();
   document.getElementById('loading')?.remove();
+  mountViewMenu();
   mountCredits(document.getElementById('app')!);
 }
 
